@@ -7,34 +7,38 @@ substitutions:
   _GEMINI_MODEL: "${_GEMINI_MODEL}"
 
 steps:
-  # Bước build Docker image trong thư mục backend
+  # Bước 1: Build Docker image trong thư mục backend
   - name: gcr.io/cloud-builders/docker
     dir: "backend"
-    args: [
-      "build",
-      "-t",
-      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app",
-      "."
-    ]
+    args:
+      - build
+      - -t
+      - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
+      - .
 
-  # Bước push image
+  # Bước 2: Push image lên Artifact Registry
   - name: gcr.io/cloud-builders/docker
-    args: [
-      "push",
-      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
-    ]
+    dir: "backend"
+    args:
+      - push
+      - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
 
-  # Bước deploy lên Cloud Run
+  # Bước 3: Deploy lên Cloud Run với biến môi trường
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
-    args: [
-      "run", "deploy", "gemini-app",
-      "--image", "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app",
-      "--region", "us-central1",
-      "--platform", "managed",
-      "--allow-unauthenticated",
-      "--set-env-vars", "GEMINI_API_KEY=${_GEMINI_API_KEY},GEMINI_MODEL=${_GEMINI_MODEL}"
-    ]
+    args:
+      - run
+      - deploy
+      - gemini-app
+      - --image
+      - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
+      - --region
+      - us-central1
+      - --platform
+      - managed
+      - --allow-unauthenticated
+      - --set-env-vars
+      - "GEMINI_API_KEY=${_GEMINI_API_KEY},GEMINI_MODEL=${_GEMINI_MODEL}"
 
 images:
   - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
