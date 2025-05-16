@@ -1,0 +1,13 @@
+flask
+requests
+PyPDF2
+python-docx
+google-cloud-storage
+google-auth
+google-auth-oauthlib
+langchain
+openai
+pandas
+numpy
+matplotlib
+Pillow
