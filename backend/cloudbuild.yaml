@@ -2,9 +2,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-  _PROJECT_ID: '${PROJECT_ID}'
-  _GEMINI_API_KEY: '${_GEMINI_API_KEY}'
-  _GEMINI_MODEL: '${_GEMINI_MODEL}'
+  _PROJECT_ID: "${PROJECT_ID}"
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -33,7 +31,7 @@ steps:
       - managed
       - --allow-unauthenticated
       - --set-env-vars
-      - "GEMINI_API_KEY=${_GEMINI_API_KEY},GEMINI_MODEL=${_GEMINI_MODEL}"
+      - "GEMINI_API_KEY=$_GEMINI_API_KEY,GEMINI_MODEL=$_GEMINI_MODEL"
 
 images:
   - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
