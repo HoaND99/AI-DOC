@@ -1,4 +1,3 @@
-
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -11,4 +10,4 @@ COPY . .
 ENV PORT=8080 PYTHONUNBUFFERED=1
 EXPOSE 8080
 
-CMD exec gunicorn --bind :$PORT app:app
+CMD exec gunicorn --bind 0.0.0.0:$PORT app:app
