@@ -7,20 +7,24 @@ substitutions:
   _GEMINI_MODEL: "${_GEMINI_MODEL}"
 
 steps:
+  # Bước build Docker image trong thư mục backend
   - name: gcr.io/cloud-builders/docker
+    dir: "backend"
     args: [
       "build",
-      "-f", "backend/Dockerfile",
-      "-t", "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app",
+      "-t",
+      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app",
       "."
     ]
 
+  # Bước push image
   - name: gcr.io/cloud-builders/docker
     args: [
       "push",
       "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
     ]
 
+  # Bước deploy lên Cloud Run
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args: [
