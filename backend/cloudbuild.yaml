@@ -1,45 +1,34 @@
+# cloudbuild.yaml (đặt ở root của repo)
 options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-  _PROJECT_ID: "${PROJECT_ID}"
-  _GEMINI_API_KEY: "${_GEMINI_API_KEY}"
-  _GEMINI_MODEL: "${_GEMINI_MODEL}"
+  _PROJECT_ID: "rare-origin-458408-r0"
+  _GEMINI_API_KEY: "AIzaSyDn0TZi376XJ5iJjZT2s8O9cG1n902ldaA"
+  _GEMINI_MODEL: "models/gemini-1.5-pro-latest"
 
 steps:
-- name: gcr.io/cloud-builders/docker
-  args:
-    [
-      "build",
-      "-t",
-      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app",
-      "."
-    ]
-
-- name: gcr.io/cloud-builders/docker
-  args:
-    [
-      "push",
-      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
-    ]
-
-- name: gcr.io/google.com/cloudsdktool/cloud-sdk
-  entrypoint: gcloud
-  args:
-    [
-      "run",
-      "deploy",
-      "gemini-app",
-      "--image",
-      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app",
-      "--region",
-      "us-central1",
-      "--platform",
-      "managed",
-      "--allow-unauthenticated",
-      "--set-env-vars",
-      "GEMINI_API_KEY=${_GEMINI_API_KEY},GEMINI_MODEL=${_GEMINI_MODEL}"
-    ]
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
+      - "."
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        gcloud run deploy gemini-app \
+          --image us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app \
+          --region us-central1 \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars GEMINI_API_KEY=${_GEMINI_API_KEY},GEMINI_MODEL=${_GEMINI_MODEL}
 
 images:
   - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
