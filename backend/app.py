@@ -8,7 +8,7 @@ from docx import Document
 app = Flask(__name__)
 
 # Đọc key và model từ biến môi trường
-API_KEY    = os.getenv("GEMINI_API_KEY")
+API_KEY    = os.getenv("AIzaSyDn0TZi376XJ5iJjZT2s8O9cG1n902ldaA")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "models/gemini-1.5-pro-latest")
 
 def extract_text_from_pdf(file_stream):
