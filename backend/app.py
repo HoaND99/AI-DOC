@@ -11,10 +11,10 @@ def extract_text(fstream, fname):
     if ext=='txt': return data.decode('utf-8',errors='ignore')
     if ext=='pdf':
         reader=PdfReader(io.BytesIO(data))
-        return '\\n'.join(p.extract_text() or '' for p in reader.pages)
+        return '\n'.join(p.extract_text() or '' for p in reader.pages)
     if ext=='docx':
         doc=Document(io.BytesIO(data))
-        return '\\n'.join(p.text for p in doc.paragraphs)
+        return '\n'.join(p.text for p in doc.paragraphs)
     return None
 
 def call_gemini_api(prompt):
@@ -29,7 +29,6 @@ def call_gemini_api(prompt):
             time.sleep(backoff); backoff=min(backoff*2,10); continue
         r.raise_for_status()
         return r.json()['candidates'][0]['content']['parts'][0]['text']
-    # fallback sang text-bison nếu vẫn 429
     return call_text_bison_api(prompt)
 
 def call_text_bison_api(prompt):
@@ -40,7 +39,6 @@ def call_text_bison_api(prompt):
     return r.json()['candidates'][0]['output']
 
 def summarize(text):
-    # nếu text nhỏ, gọi 1 lần; else chia chunk
     if len(text) < 1500000:
         time.sleep(1)
         return call_gemini_api(f"Summarize this text:\n{text}")
