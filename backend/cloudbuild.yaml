@@ -8,27 +8,33 @@ substitutions:
   _GEMINI_MODEL: "models/gemini-1.5-pro-latest"
 
 steps:
-  - name: "gcr.io/cloud-builders/docker"
-    args:
-      - "build"
-      - "-t"
-      - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
-      - "."
-  - name: "gcr.io/cloud-builders/docker"
-    args:
-      - "push"
-      - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    entrypoint: "bash"
-    args:
-      - "-c"
-      - |
-        gcloud run deploy gemini-app \
-          --image us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app \
-          --region us-central1 \
-          --platform managed \
-          --allow-unauthenticated \
-          --set-env-vars GEMINI_API_KEY=${_GEMINI_API_KEY},GEMINI_MODEL=${_GEMINI_MODEL}
+- name: "gcr.io/cloud-builders/docker"
+  args:
+    [
+      "build",
+      "-t",
+      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app",
+      "-f",
+      "backend/Dockerfile",
+      "backend"
+    ]
+- name: "gcr.io/cloud-builders/docker"
+  args:
+    [
+      "push",
+      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
+    ]
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  entrypoint: "bash"
+  args:
+    - "-c"
+    - |
+      gcloud run deploy gemini-app \
+        --image us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app \
+        --region us-central1 \
+        --platform managed \
+        --allow-unauthenticated \
+        --set-env-vars GEMINI_API_KEY=${_GEMINI_API_KEY},GEMINI_MODEL=${_GEMINI_MODEL}
 
 images:
   - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
