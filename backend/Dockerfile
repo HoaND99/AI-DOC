@@ -12,4 +12,9 @@ COPY . .
 EXPOSE 8080
 
 # Chạy uvicorn
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
+ENV PORT=8080
+EXPOSE ${PORT}
+
+# dùng shell để expand $PORT
+CMD ["bash", "-lc", "uvicorn app:app --host 0.0.0.0 --port ${PORT}"]
+

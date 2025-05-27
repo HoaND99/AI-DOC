@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
-google-ai-generativelanguage
+google-generativeai
 pdfminer.six
 python-docx
 python-multipart
