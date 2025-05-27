@@ -1,7 +1,6 @@
 fastapi
 uvicorn[standard]
 google-auth
-google-auth-transport-requests
 requests
 pdfminer.six
 python-docx
