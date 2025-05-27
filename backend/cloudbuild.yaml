@@ -1,40 +1,25 @@
-# cloudbuild.yaml (đặt ở root của repo)
-options:
-  logging: CLOUD_LOGGING_ONLY
-
-substitutions:
-  _PROJECT_ID: "rare-origin-458408-r0"
-  _GEMINI_API_KEY: "AIzaSyDn0TZi376XJ5iJjZT2s8O9cG1n902ldaA"
-  _GEMINI_MODEL: "gemini-1.5-pro"
-
 steps:
-- name: "gcr.io/cloud-builders/docker"
-  args:
-    [
-      "build",
-      "-t",
-      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app",
-      "-f",
-      "backend/Dockerfile",
-      "backend"
-    ]
-- name: "gcr.io/cloud-builders/docker"
-  args:
-    [
-      "push",
-      "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
-    ]
-- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-  entrypoint: "bash"
-  args:
-    - "-c"
-    - |
-      gcloud run deploy gemini-app \
-        --image us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app \
-        --region us-central1 \
-        --platform managed \
-        --allow-unauthenticated \
-        --set-env-vars GEMINI_API_KEY=${_GEMINI_API_KEY},GEMINI_MODEL=${_GEMINI_MODEL}
+# Build Docker image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build','-t','gcr.io/$PROJECT_ID/doc-summarizer','.']
 
+# Push image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push','gcr.io/$PROJECT_ID/doc-summarizer']
+
+# Deploy to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args:
+    - 'run'
+    - 'deploy'
+    - 'doc-summarizer'
+    - '--image'
+    - 'gcr.io/$PROJECT_ID/doc-summarizer'
+    - '--platform'
+    - 'managed'
+    - '--region'
+    - 'us-central1'
+    - '--allow-unauthenticated'
 images:
-  - "us-central1-docker.pkg.dev/${_PROJECT_ID}/gemini-docker-repo/gemini-app"
+  - 'gcr.io/$PROJECT_ID/doc-summarizer'

@@ -1,74 +1,36 @@
-import os
-import tempfile
-from flask import Flask, request, jsonify
-import requests
+import os, tempfile
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from google.auth import default
 from google.auth.transport.requests import AuthorizedSession
+from pdfminer.high_level import extract_text as extract_text_pdf
+from docx import Document
 
-app = Flask(__name__)
-
-# Đọc từ env
+app = FastAPI()
 MODEL = os.getenv("GEMINI_MODEL")
-ENDPOINT = os.getenv("GEMINI_ENDPOINT", "generateContent")
-
 if not MODEL:
     raise RuntimeError("Bạn phải set GEMINI_MODEL")
-
-BASE_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/"
-    f"models/{MODEL}:{ENDPOINT}"
-)
-
-# Tự authenticate qua SA key JSON
+BASE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 creds, _ = default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
 authed_session = AuthorizedSession(creds)
 
 def call_gemini(text: str) -> str:
-    if ENDPOINT == "generateContent":
-        payload = {
-            # payload format mới: dùng field 'text'
-            "text": text,
-            "temperature": 0.2,
-            "maxOutputTokens": 512,
-            "candidateCount": 1,
-        }
+    payload = {"text": text, "temperature":0.2, "maxOutputTokens":512, "candidateCount":1}
+    resp = authed_session.post(BASE_URL, json=payload); resp.raise_for_status()
+    return resp.json()["candidates"][0]["output"]
+
+@app.post("/summarize")
+async def summarize(file: UploadFile = File(...)):
+    ext = file.filename.rsplit(".",1)[-1].lower()
+    with tempfile.NamedTemporaryFile(suffix="."+ext, delete=False) as tmp:
+        data = await file.read(); tmp.write(data); path=tmp.name
+    if ext=="pdf":
+        text = extract_text_pdf(path)
+    elif ext in ("docx","doc"):
+        doc=Document(path); text="\n".join(p.text for p in doc.paragraphs)
     else:
-        payload = {
-            "messages": [{"author": "user", "content": text}],
-            "temperature": 0.2,
-            "maxOutputTokens": 512,
-            "candidateCount": 1,
-        }
+        try: text = data.decode("utf-8",errors="ignore")
+        except: raise HTTPException(400,"Unsupported format")
+    return {"summary": call_gemini(text)}
 
-    resp = authed_session.post(BASE_URL, json=payload)
-    resp.raise_for_status()
-    data = resp.json()
-    cands = data.get("candidates", [])
-    if not cands:
-        return ""
-    if ENDPOINT == "generateContent":
-        return cands[0].get("output", "")
-    else:
-        return cands[0].get("message", {}).get("content", "")
-
-@app.route("/summarize", methods=["POST"])
-def summarize():
-    # Lưu file tạm nếu cần
-    f = request.files.get("file")
-    if not f:
-        return jsonify(error="Không tìm thấy file"), 400
-
-    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
-        f.save(tmp.name)
-        tmp.seek(0)
-        content = tmp.read().decode("utf-8", errors="ignore")
-
-    try:
-        summary = call_gemini(content)
-        return jsonify(summary=summary)
-    except Exception as e:
-        return jsonify(error=str(e), detail=getattr(e, "response", {}).text), 500
-
-if __name__ == "__main__":
-    # Chỉ chạy dev server
-    app.run(host="0.0.0.0", port=8080, debug=True)
+if __name__=="__main__":
+    import uvicorn; uvicorn.run("app:app",host="0.0.0.0",port=8080,reload=True)

@@ -1,8 +1,15 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 WORKDIR /app
+
+# Copy và cài dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source
 COPY . .
-ENV PORT=8080 PYTHONUNBUFFERED=1
+
+# Port expose (không bắt buộc nhưng rõ ràng)
 EXPOSE 8080
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+
+# Chạy uvicorn
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
