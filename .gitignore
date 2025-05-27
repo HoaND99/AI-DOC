@@ -10,3 +10,5 @@ backend/summarizer-sa-key.json
 frontend/app/build/
 frontend/app/.dart_tool/
 frontend/app/.idea/
+
+.vs/
