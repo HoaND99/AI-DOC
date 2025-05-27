@@ -5,7 +5,7 @@ options:
 substitutions:
   _PROJECT_ID: "rare-origin-458408-r0"
   _GEMINI_API_KEY: "AIzaSyDn0TZi376XJ5iJjZT2s8O9cG1n902ldaA"
-  _GEMINI_MODEL: "models/gemini-1.5-pro-latest"
+  _GEMINI_MODEL: "gemini-1.5-pro"
 
 steps:
 - name: "gcr.io/cloud-builders/docker"
