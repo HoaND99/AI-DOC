@@ -7,13 +7,14 @@ options:
 
 steps:
 # 1) Build image
+steps:
 - name: 'gcr.io/cloud-builders/docker'
   args:
     [
       'build',
-      '-t',
-      'us-central1-docker.pkg.dev/$PROJECT_ID/doc-repo/doc-summarizer',
-      '.'
+      '-f', 'backend/Dockerfile',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/doc-repo/doc-summarizer',
+      'backend'
     ]
 
 # 2) Push image lên Artifact Registry
