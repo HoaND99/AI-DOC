@@ -36,7 +36,9 @@ steps:
         --region us-central1 \
         --platform managed \
         --allow-unauthenticated \
+        --service-account gemini-summarizer-sa@rare-origin-458408-r0.iam.gserviceaccount.com \
         --set-env-vars GOOGLE_API_KEY=$$GOOGLE_API_KEY,GEMINI_MODEL=$$GEMINI_MODEL
+
 
 # Khai báo image để Cloud Build “đánh dấu” thành artifact
 images:
