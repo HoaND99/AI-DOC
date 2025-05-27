@@ -1,0 +1,12 @@
+# Python artifacts
+__pycache__/
+*.pyc
+.venv/
+
+# Service account credentials
+backend/summarizer-sa-key.json
+
+# Flutter build artifacts
+frontend/app/build/
+frontend/app/.dart_tool/
+frontend/app/.idea/
