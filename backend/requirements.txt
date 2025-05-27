@@ -4,3 +4,5 @@ google-generativeai
 pdfminer.six
 python-docx
 python-multipart
+google-genai
+google-generative-ai>=0.6.18
