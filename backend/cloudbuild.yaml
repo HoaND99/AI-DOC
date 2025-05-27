@@ -2,28 +2,30 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-
+# Bước build, chạy trong thư mục backend
 - name: 'gcr.io/cloud-builders/docker'
+  dir: 'backend'
   args: ['build','-t','gcr.io/$PROJECT_ID/doc-summarizer','.']
 
-
+# Bước push, cũng trong backend
 - name: 'gcr.io/cloud-builders/docker'
+  dir: 'backend'
   args: ['push','gcr.io/$PROJECT_ID/doc-summarizer']
 
-
+# Bước deploy Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: 'gcloud'
   args:
-    - 'run'
-    - 'deploy'
-    - 'doc-summarizer'
-    - '--image'
-    - 'gcr.io/$PROJECT_ID/doc-summarizer'
-    - '--platform'
-    - 'managed'
-    - '--region'
-    - 'us-central1'
-    - '--allow-unauthenticated'
+    - run
+    - deploy
+    - doc-summarizer
+    - --image
+    - gcr.io/$PROJECT_ID/doc-summarizer
+    - --platform
+    - managed
+    - --region
+    - us-central1
+    - --allow-unauthenticated
 
 images:
   - 'gcr.io/$PROJECT_ID/doc-summarizer'
