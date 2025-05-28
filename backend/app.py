@@ -4,8 +4,8 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from dotenv import load_dotenv
 from pdfminer.high_level import extract_text
 import docx
-import google_genai
-from google_genai import types
+import google.genai
+from google.genai import types
 
 # Load biến môi trường từ .env
 load_dotenv()
