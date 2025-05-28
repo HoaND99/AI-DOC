@@ -1,4 +1,5 @@
-import os, tempfile
+import os
+import tempfile
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pdfminer.high_level import extract_text as extract_text_pdf
@@ -8,20 +9,24 @@ from google.api_core.client_options import ClientOptions
 from google.ai.generativelanguage_v1.services.generative_language_service import GenerativeLanguageServiceClient
 from google.ai.generativelanguage_v1.types import GenerateTextRequest
 
-# API key
+# Lấy API key từ biến môi trường
 API_KEY = os.getenv("GOOGLE_API_KEY")
 if not API_KEY:
     raise RuntimeError("Missing GOOGLE_API_KEY")
 
-# Init client
+# Khởi tạo Gemini client (v1)
 client_opts = ClientOptions(api_key=API_KEY)
 client = GenerativeLanguageServiceClient(client_options=client_opts)
 MODEL = os.getenv("GEMINI_MODEL", "models/text-bison-001")
 
 app = FastAPI(title="Doc Summarizer")
 app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def health():
@@ -36,22 +41,26 @@ async def summarize(file: UploadFile = File(...)):
     if ext not in (".pdf", ".docx"):
         raise HTTPException(400, "Unsupported file type")
 
-    # save
+    # Lưu tạm file
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
         data = await file.read()
         tmp.write(data)
         path = tmp.name
 
-    # extract
+    # Trích xuất text
     try:
-        text = extract_text_pdf(path) if ext == ".pdf" else "\n".join(p.text for p in Document(path).paragraphs)
+        if ext == ".pdf":
+            text = extract_text_pdf(path)
+        else:
+            doc = Document(path)
+            text = "\n".join(p.text for p in doc.paragraphs)
     except Exception as e:
         raise HTTPException(500, f"Extract failed: {e}")
 
     if not text.strip():
         raise HTTPException(400, "No text found")
 
-    # generate Vietnamese summary
+    # Gọi Gemini để tóm tắt
     try:
         req = GenerateTextRequest(
             model=MODEL,

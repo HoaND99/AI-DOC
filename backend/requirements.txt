@@ -1,7 +1,6 @@
-fastapi
-uvicorn[standard]
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
 google-ai-generativelanguage>=0.6.18
-pdfminer.six
-python-docx
-python-multipart
-
+pdfminer.six==20250506
+python-docx==1.1.2
+python-multipart==0.0.20
