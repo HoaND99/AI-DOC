@@ -21,6 +21,9 @@ MODEL = os.getenv("GEMINI_MODEL", "models/text-bison-001")
 
 app = FastAPI(title="Doc Summarizer")
 
+@app.get("/")
+async def _health_check():
+    return {"status": "ok"}
 
 app.add_middleware(
     CORSMiddleware,
