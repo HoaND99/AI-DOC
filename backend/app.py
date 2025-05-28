@@ -1,12 +1,11 @@
 import os
-import io
 import logging
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from dotenv import load_dotenv
 from pdfminer.high_level import extract_text
 import docx
-import google.genai as genai
-from google.genai import types
+import google_genai
+from google_genai import types
 
 # Load biến môi trường từ .env
 load_dotenv()
@@ -19,18 +18,18 @@ app = FastAPI(title="Doc Summarizer with Google GenAI")
 logger = logging.getLogger("uvicorn.error")
 
 # Khởi tạo client GenAI
-client = genai.Client(api_key=API_KEY)
+client = google_genai.Client(api_key=API_KEY)
 
 def summarize_text(text: str) -> str:
     """Gọi GenAI để tóm tắt văn bản."""
-    # Sử dụng đúng phương thức của google-genai v0.8.0
-    response = client.text.generate(
-        model="text-bison-001",        # hoặc "chat-bison-001" với client.chat.generate
+    response = client.generate_text(
+        model="text-bison-001",      # hoặc "chat-bison-001" dùng client.generate_chat_message
         prompt=text,
         temperature=0.2,
         max_output_tokens=300,
     )
-    return response.result.text
+    # Kết quả trả về nằm ở response.text
+    return response.text
 
 def extract_docx(path: str) -> str:
     """Trích xuất text từ DOCX."""
@@ -44,7 +43,7 @@ async def summarize(file: UploadFile = File(...)):
     if ext not in ("pdf", "docx"):
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ PDF và DOCX")
 
-    # Lưu tạm file lên ổ /tmp
+    # Lưu tạm file vào /tmp
     tmp_path = f"/tmp/{file.filename}"
     with open(tmp_path, "wb") as f:
         f.write(await file.read())
@@ -62,7 +61,7 @@ async def summarize(file: UploadFile = File(...)):
     if not text.strip():
         raise HTTPException(status_code=422, detail="Tài liệu rỗng")
 
-    # Giới hạn độ dài input
+    # Giới hạn độ dài input (nếu cần)
     if len(text) > 50_000:
         text = text[:50_000]
 
