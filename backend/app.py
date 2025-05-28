@@ -1,4 +1,6 @@
 import os
+import io
+import logging
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from dotenv import load_dotenv
 from pdfminer.high_level import extract_text
@@ -6,58 +8,69 @@ import docx
 import google.genai as genai
 from google.genai import types
 
-load_dotenv()  # Đọc GOOGLE_API_KEY từ .env
-
+# Load biến môi trường từ .env
+load_dotenv()
 API_KEY = os.getenv("GOOGLE_API_KEY")
 if not API_KEY:
     raise RuntimeError("Bạn phải thiết lập biến môi trường GOOGLE_API_KEY")
 
-# Khởi tạo FastAPI
+# Khởi tạo FastAPI và logger
 app = FastAPI(title="Doc Summarizer with Google GenAI")
+logger = logging.getLogger("uvicorn.error")
 
 # Khởi tạo client GenAI
 client = genai.Client(api_key=API_KEY)
 
 def summarize_text(text: str) -> str:
     """Gọi GenAI để tóm tắt văn bản."""
-    response = client.generate_text(
-        model="gemini-2.5-turbo",
+    # Sử dụng đúng phương thức của google-genai v0.8.0
+    response = client.text.generate(
+        model="text-bison-001",        # hoặc "chat-bison-001" với client.chat.generate
         prompt=text,
         temperature=0.2,
-        max_output_tokens=300
+        max_output_tokens=300,
     )
-    return response.text
+    return response.result.text
 
-def extract_docx(file_path: str) -> str:
+def extract_docx(path: str) -> str:
     """Trích xuất text từ DOCX."""
-    doc = docx.Document(file_path)
-    return "\n".join(para.text for para in doc.paragraphs)
+    doc = docx.Document(path)
+    return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
 
 @app.post("/summarize/")
 async def summarize(file: UploadFile = File(...)):
-
-    ext = file.filename.split(".")[-1].lower()
+    # Kiểm tra đuôi file
+    ext = file.filename.rsplit(".", 1)[-1].lower()
     if ext not in ("pdf", "docx"):
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ PDF và DOCX")
-    
 
+    # Lưu tạm file lên ổ /tmp
     tmp_path = f"/tmp/{file.filename}"
     with open(tmp_path, "wb") as f:
         f.write(await file.read())
-    
 
-    if ext == "pdf":
-        text = extract_text(tmp_path)
-    else:
-        text = extract_docx(tmp_path)
-    
-    if not text.strip():
+    # Trích xuất text
+    try:
+        if ext == "pdf":
+            text = extract_text(tmp_path)
+        else:
+            text = extract_docx(tmp_path)
+    except Exception as e:
+        logger.error("Error extracting text: %s", e, exc_info=True)
         raise HTTPException(status_code=422, detail="Không thể trích xuất nội dung từ tài liệu")
 
+    if not text.strip():
+        raise HTTPException(status_code=422, detail="Tài liệu rỗng")
 
+    # Giới hạn độ dài input
     if len(text) > 50_000:
         text = text[:50_000]
 
+    # Gọi GenAI để tóm tắt
+    try:
+        summary = summarize_text(text)
+    except Exception as e:
+        logger.error("Error summarizing text: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Lỗi khi gọi GenAI: " + str(e))
 
-    summary = summarize_text(text)
     return {"summary": summary}
