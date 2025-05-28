@@ -34,19 +34,18 @@ app.add_middleware(
 
 @app.post("/summarize")
 async def summarize(file: UploadFile = File(...)):
-
+    
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in {".pdf", ".docx"}:
         raise HTTPException(status_code=400, detail="Unsupported file type")
 
-    # save temporary file
-    suffix = ext
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+    # Save to temp file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
         contents = await file.read()
         tmp.write(contents)
         tmp_path = tmp.name
 
-    # extract text
+    # Extract text
     try:
         if ext == ".pdf":
             text = extract_text_pdf(tmp_path)
@@ -59,7 +58,7 @@ async def summarize(file: UploadFile = File(...)):
     if not text.strip():
         raise HTTPException(status_code=400, detail="No text found in document")
 
-    # call Gemini
+    # Call Gemini API to generate Vietnamese summary
     try:
         request = GenerateTextRequest(
             model=MODEL,
