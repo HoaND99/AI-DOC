@@ -1,76 +1,66 @@
 import os
 import tempfile
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from google.ai.generativelanguage_v1 import GenerativeLanguageServiceClient
+from google.api_core.client_options import ClientOptions
 from pdfminer.high_level import extract_text as extract_text_pdf
 from docx import Document
 
-from google.api_core.client_options import ClientOptions
-from google.ai.generativelanguage_v1.services.generative_language_service import GenerativeLanguageServiceClient
-from google.ai.generativelanguage_v1.types import GenerateTextRequest
-
-# Lấy API key từ biến môi trường
-API_KEY = os.getenv("GOOGLE_API_KEY")
+# Đọc API key từ biến môi trường
+API_KEY = os.environ.get("GOOGLE_API_KEY")
 if not API_KEY:
     raise RuntimeError("Missing GOOGLE_API_KEY")
 
-# Khởi tạo Gemini client (v1)
-client_opts = ClientOptions(api_key=API_KEY)
-client = GenerativeLanguageServiceClient(client_options=client_opts)
-MODEL = os.getenv("GEMINI_MODEL", "models/text-bison-001")
+# Khởi tạo client, truyền API key qua client_options
+client = GenerativeLanguageServiceClient(
+    client_options=ClientOptions(api_key=API_KEY)
+)
+
+# Model có thể override qua biến GEMINI_MODEL
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-pro-latest")
 
 app = FastAPI(title="Doc Summarizer")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
 
 
 @app.get("/")
-async def health():
+async def root():
     return {"status": "ok"}
 
+def summarize_text(text: str) -> str:
+    # Gọi API generateText
+    response = client.generate_text(
+        request={
+            "model": MODEL,
+            "prompt": {
+                "text": f"Tóm tắt đoạn sau bằng tiếng Việt ngắn gọn:\n\n{text}"
+            }
+        }
+    )
+    return response.choices[0].text
 
+@app.post("/summarize/")
+async def summarize_file(file: UploadFile = File(...)):
+    # Chỉ chấp nhận PDF và DOCX
+    suffix = file.filename.lower().rsplit(".", 1)[-1]
+    if suffix not in ("pdf", "docx"):
+        raise HTTPException(400, "Chỉ chấp nhận PDF hoặc DOCX")
 
-@app.post("/summarize")
-async def summarize(file: UploadFile = File(...)):
-
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in (".pdf", ".docx"):
-        raise HTTPException(400, "Unsupported file type")
-
-    # Lưu tạm file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+    # Lưu tạm file và extract text
+    with tempfile.NamedTemporaryFile(suffix="."+suffix, delete=False) as tmp:
         data = await file.read()
         tmp.write(data)
-        path = tmp.name
+        tmp_path = tmp.name
 
-    # Trích xuất text
-    try:
-        if ext == ".pdf":
-            text = extract_text_pdf(path)
-        else:
-            doc = Document(path)
-            text = "\n".join(p.text for p in doc.paragraphs)
-    except Exception as e:
-        raise HTTPException(500, f"Extract failed: {e}")
+    if suffix == "pdf":
+        raw = extract_text_pdf(tmp_path)
+    else:
+        doc = Document(tmp_path)
+        raw = "\n".join(p.text for p in doc.paragraphs)
 
-    if not text.strip():
-        raise HTTPException(400, "No text found")
+    if not raw.strip():
+        raise HTTPException(422, "Không trích được nội dung")
 
-    # Gọi Gemini để tóm tắt
-    try:
-        req = GenerateTextRequest(
-            model=MODEL,
-            prompt=f"Tóm tắt ngắn gọn nội dung sau bằng tiếng Việt:\n\n{text}",
-            temperature=0.3,
-            max_output_tokens=500,
-        )
-        res = client.generate_text(request=req)
-        summary = res.text.strip()
-    except Exception as e:
-        raise HTTPException(502, f"GenAI error: {e}")
-
-    return {"summary": summary}
+    summary = summarize_text(raw)
+    return JSONResponse({"summary": summary})
