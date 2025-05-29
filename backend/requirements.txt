@@ -1,7 +1,8 @@
-fastapi==0.115.12
-uvicorn[standard]==0.34.2
-google-genai==0.8.0
-pdfminer.six==20250506
-python-docx==1.1.2
-python-multipart==0.0.20
-python-dotenv==1.1.0
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+google-generativeai
+google-cloud-documentai
+python-docx
+PyPDF2
