@@ -117,7 +117,8 @@ async def summarize(
             text = extract_text_docai(tmp_path, allowed[ext])
     except Exception as e:
         logger.error("Error extracting text: %s", e, exc_info=True)
-        raise HTTPException(status_code=422, detail="Không thể trích xuất nội dung hoặc quá quota")
+        raise HTTPException(status_code=422, detail=f"Lỗi chi tiết: {str(e)}")
+
 
     if not text.strip():
         raise HTTPException(status_code=422, detail="Tài liệu rỗng hoặc OCR thất bại")
