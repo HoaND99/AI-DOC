@@ -1,60 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
-class HistoryPage extends StatelessWidget {
+class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
   @override
+  State<HistoryPage> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends State<HistoryPage> {
+  List<Map<String, dynamic>> _history = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('history') ?? [];
+    final result = list.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
+    setState(() {
+      _history = result.reversed.toList();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // TODO: replace with real history list
-    final dummy = [
-      {'file': 'doc1.pdf', 'time': '2025-05-27 10:00', 'summary': '...'},
-      {'file': 'lecture.docx', 'time': '2025-05-27 11:30', 'summary': '...'},
-    ];
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Lịch sử tóm tắt',
-              style: Theme.of(context).textTheme.headlineSmall,
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lịch sử tóm tắt')),
+      body: _history.isEmpty
+          ? const Center(child: Text("Chưa có lịch sử"))
+          : ListView.builder(
+              itemCount: _history.length,
+              itemBuilder: (context, index) {
+                final item = _history[index];
+                return ListTile(
+                  title: Text(item['file'] ?? 'File'),
+                  subtitle: Text(item['summary'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+                  trailing: Text(item['time']?.substring(0, 19).replaceAll('T', ' ') ?? ''),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text(item['file'] ?? 'File'),
+                        content: SingleChildScrollView(child: Text(item['summary'] ?? '')),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Đóng"))
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.separated(
-                itemCount: dummy.length,
-                separatorBuilder: (_, __) => const Divider(),
-                itemBuilder: (context, index) {
-                  final item = dummy[index];
-                  return ListTile(
-                    title: Text(item['file']!),
-                    subtitle: Text(item['time']!),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: Text(item['file']!),
-                          content: SingleChildScrollView(
-                            child: Text(item['summary']!),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Đóng'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

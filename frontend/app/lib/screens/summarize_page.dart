@@ -1,105 +1,194 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:share_plus/share_plus.dart';
 
 class SummarizePage extends StatefulWidget {
-  const SummarizePage({super.key});
+  final String summary;
+  const SummarizePage({super.key, required this.summary});
 
   @override
-  State<SummarizePage> createState() => _SummarizePageState();
+  _SummarizePageState createState() => _SummarizePageState();
 }
 
 class _SummarizePageState extends State<SummarizePage> {
-  String _summary = '';
-  bool _loading = false;
-  String? _fileName;
+  bool _downloading = false;
 
-  Future<void> _pickAndUpload() async {
-    setState(() {
-      _loading = true;
-      _summary = '';
-    });
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'doc', 'docx'],
-    );
-    if (result == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    final file = File(result.files.single.path!);
-    _fileName = result.files.single.name;
-    final uri = Uri.parse('http://127.0.0.1:8080/summarize');
-    final request = http.MultipartRequest('POST', uri)
-      ..files.add(await http.MultipartFile.fromPath('file', file.path));
-
-    final resp = await request.send();
-    if (resp.statusCode == 200) {
-      final body = await resp.stream.bytesToString();
-      final data = jsonDecode(body);
-      setState(() {
-        _summary = data['summary'];
-        _loading = false;
-      });
-      // TODO: Save history
+  Future<Directory?> _getDownloadDirectory() async {
+    if (Platform.isAndroid) {
+      return await getExternalStorageDirectory();
+    } else if (Platform.isIOS) {
+      return await getApplicationDocumentsDirectory();
     } else {
-      setState(() {
-        _summary = 'Error: ${resp.statusCode}';
-        _loading = false;
-      });
+      return null;
     }
+  }
+
+  Future<void> downloadSummaryFile({
+    required String summary,
+    required String exportFormat,
+    String apiUrl = "https://doc-summarizer-103815638383.us-central1.run.app/export-summary/",
+  }) async {
+    setState(() {
+      _downloading = true;
+    });
+
+    try {
+      // Lấy thông tin Android version
+      int sdkInt = 0;
+      if (Platform.isAndroid) {
+        final androidInfo = await DeviceInfoPlugin().androidInfo;
+        sdkInt = androidInfo.version.sdkInt ?? 0;
+      }
+
+      // Chỉ xin quyền storage nếu Android < 11 (API < 30)
+      if (Platform.isAndroid && sdkInt < 30) {
+        var status = await Permission.storage.request();
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Cần cấp quyền lưu file để tải về.')),
+          );
+          setState(() => _downloading = false);
+          return;
+        }
+      }
+
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+      request.fields['summary'] = summary;
+      request.fields['export_format'] = exportFormat;
+
+      var response = await request.send();
+      if (response.statusCode == 200) {
+        String filename = "summary.$exportFormat";
+        final contentDisposition = response.headers['content-disposition'];
+        if (contentDisposition != null && contentDisposition.contains('filename=')) {
+          filename = contentDisposition.split('filename=')[1].replaceAll('"', '').trim();
+        }
+
+        final downloadsDirectory = await _getDownloadDirectory();
+        if (downloadsDirectory == null) {
+          throw Exception("Không tìm thấy thư mục lưu file.");
+        }
+        final file = File('${downloadsDirectory.path}/$filename');
+        await response.stream.pipe(file.openWrite());
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã lưu: ${file.path}'),
+            action: SnackBarAction(
+              label: 'Mở',
+              onPressed: () => OpenFile.open(file.path),
+            ),
+          ),
+        );
+
+        // Gợi ý chia sẻ file ra ngoài
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Chia sẻ file"),
+            content: Text("Bạn muốn chia sẻ file này ra ngoài không?\n\nĐường dẫn:\n${file.path}"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Share.shareXFiles([XFile(file.path)], text: 'Tóm tắt tài liệu của bạn!');
+                  Navigator.pop(ctx);
+                },
+                child: const Text("Chia sẻ"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Đóng"),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải file (status ${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi tải file: $e')),
+      );
+    }
+
+    setState(() {
+      _downloading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Tóm tắt tài liệu',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.upload_file),
-              label: Text(
-                _loading ? 'Đang xử lý...' : 'Chọn file & Tóm tắt',
-              ),
-              onPressed: _loading ? null : _pickAndUpload,
-            ),
-            if (_fileName != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'File: $_fileName',
-                style: const TextStyle(fontStyle: FontStyle.italic),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _summary.isEmpty
-                      ? const Center(child: Text('Chưa có nội dung'))
-                      : SingleChildScrollView(
-                          child: Card(
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Text(_summary),
-                            ),
-                          ),
+    final summaryText = widget.summary;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Kết quả tóm tắt"),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: summaryText.isEmpty
+            ? const Center(child: Text("Không có nội dung tóm tắt"))
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    "Kết quả tóm tắt:",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: TextFormField(
+                        initialValue: summaryText,
+                        maxLines: null,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.all(12),
                         ),
-            ),
-          ],
-        ),
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _downloading
+                            ? null
+                            : () => downloadSummaryFile(
+                                  summary: summaryText,
+                                  exportFormat: "docx",
+                                ),
+                        icon: const Icon(Icons.download),
+                        label: const Text("Tải về .docx"),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton.icon(
+                        onPressed: _downloading
+                            ? null
+                            : () => downloadSummaryFile(
+                                  summary: summaryText,
+                                  exportFormat: "txt",
+                                ),
+                        icon: const Icon(Icons.download),
+                        label: const Text("Tải về .txt"),
+                      ),
+                    ],
+                  ),
+                  if (_downloading) ...[
+                    const SizedBox(height: 12),
+                    const Center(child: CircularProgressIndicator()),
+                  ],
+                ],
+              ),
       ),
     );
   }
