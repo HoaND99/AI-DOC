@@ -91,6 +91,10 @@ def save_summary_to_txt(summary_text):
         f.write(summary_text)
     return filename, filepath
 
+@app.get("/")
+async def root():
+    return {"msg": "backend running"}
+
 @app.post("/summarize/")
 async def summarize(
     file: UploadFile = File(...),
