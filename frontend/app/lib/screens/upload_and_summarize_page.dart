@@ -52,7 +52,7 @@ class _UploadAndSummarizePageState extends State<UploadAndSummarizePage> {
 
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse('https://doc-summarizer-103815638383.us-central1.run.app/summarize/'),
+      Uri.parse('https://aidocvn.xyz/summarize/'),
     );
     request.files.add(await http.MultipartFile.fromPath('file', _selectedFile!.path));
     request.fields['language'] = _language;
