@@ -3,25 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-
-// Hàm lưu lịch sử tóm tắt
-Future<void> saveHistory(String fileName, String summary) async {
-  final prefs = await SharedPreferences.getInstance();
-  final now = DateTime.now().toIso8601String();
-  final entry = {
-    'file': fileName,
-    'summary': summary,
-    'time': now,
-  };
-  final list = prefs.getStringList('history') ?? [];
-  list.add(jsonEncode(entry));
-  await prefs.setStringList('history', list);
-}
 
 class UploadAndSummarizePage extends StatefulWidget {
   final Function(String) onSummaryReady;
-  const UploadAndSummarizePage({super.key, required this.onSummaryReady});
+  const UploadAndSummarizePage({Key? key, required this.onSummaryReady}) : super(key: key);
 
   @override
   State<UploadAndSummarizePage> createState() => _UploadAndSummarizePageState();
@@ -29,14 +14,11 @@ class UploadAndSummarizePage extends StatefulWidget {
 
 class _UploadAndSummarizePageState extends State<UploadAndSummarizePage> {
   File? _selectedFile;
-  String _language = "vi";
+  String _language = 'vi';
   bool _loading = false;
 
   Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'docx', 'jpg', 'jpeg', 'png'],
-    );
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
     if (result != null && result.files.single.path != null) {
       setState(() {
         _selectedFile = File(result.files.single.path!);
@@ -63,63 +45,50 @@ class _UploadAndSummarizePageState extends State<UploadAndSummarizePage> {
         final responseBody = await response.stream.bytesToString();
         final data = json.decode(responseBody);
         final summary = data['summary'] ?? '';
-        // Lưu lịch sử trước khi chuyển màn hình
-        await saveHistory(_selectedFile?.path?.split("/")?.last ?? "", summary);
+        if (!mounted) return;
         widget.onSummaryReady(summary);
+        Navigator.pop(context); // Đóng trang upload sau khi tóm tắt xong
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: Không thể tóm tắt tài liệu (status ${response.statusCode})')),
+          const SnackBar(content: Text('Tóm tắt thất bại!')), 
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lỗi mạng: $e')),
       );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+      });
     }
-    setState(() {
-      _loading = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Tóm tắt tài liệu")),
+      appBar: AppBar(
+        title: const Text('Tải lên và tóm tắt'),
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ElevatedButton.icon(
-              icon: const Icon(Icons.upload_file),
-              label: Text(_selectedFile == null ? "Chọn file" : "Đổi file"),
-              onPressed: _pickFile,
+            ElevatedButton(
+              onPressed: _loading ? null : _pickFile,
+              child: const Text('Chọn file'),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text("Ngôn ngữ tóm tắt:"),
-                const SizedBox(width: 12),
-                DropdownButton<String>(
-                  value: _language,
-                  items: const [
-                    DropdownMenuItem(value: "vi", child: Text("Tiếng Việt")),
-                    DropdownMenuItem(value: "en", child: Text("English")),
-                    DropdownMenuItem(value: "fr", child: Text("Français")),
-                    DropdownMenuItem(value: "zh", child: Text("中文")),
-                    DropdownMenuItem(value: "ja", child: Text("日本語")),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setState(() => _language = val);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+            if (_selectedFile != null)
+              Text('File đã chọn: ${_selectedFile!.path.split(Platform.pathSeparator).last}'),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: (_selectedFile != null && !_loading) ? _summarize : null,
-              child: _loading
-                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator())
-                  : const Text("Tóm tắt"),
+              child: _loading ? const CircularProgressIndicator() : const Text('Tóm tắt'),
             ),
           ],
         ),

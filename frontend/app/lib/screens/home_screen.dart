@@ -11,50 +11,50 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0;
-  late List<Widget> _pages;
-
-  @override
-  void initState() {
-    super.initState();
-    _pages = [
-      UploadAndSummarizePage(
-        onSummaryReady: (summary) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SummarizePage(summary: summary),
-            ),
-          );
-        },
+  void _onSummaryReady(String summary) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SummarizePage(summary: summary),
       ),
-      const HistoryPage(),
-    ];
+    );
   }
 
-  void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+  void _openHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const HistoryPage(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.summarize),
-            label: 'Tóm tắt',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'Lịch sử',
+      appBar: AppBar(
+        title: const Text('Tóm tắt tài liệu AI'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: _openHistory,
           ),
         ],
+      ),
+      body: Center(
+        child: ElevatedButton(
+          child: const Text('Tải file lên và tóm tắt'),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UploadAndSummarizePage(
+                  onSummaryReady: _onSummaryReady,
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
