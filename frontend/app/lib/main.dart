@@ -11,13 +11,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AI DOC Summarizer',
-      debugShowCheckedModeBanner: false,
+      title: 'AI Doc Summarizer',
       theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        useMaterial3: true,
+        primarySwatch: Colors.blue,
       ),
       home: const HomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
