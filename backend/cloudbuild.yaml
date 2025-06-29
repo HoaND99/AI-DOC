@@ -4,7 +4,6 @@ serviceAccount: projects/rare-origin-458408-r0/serviceAccounts/gemini-summarizer
 # backend/cloudbuild.yaml
 options:
   logging: CLOUD_LOGGING_ONLY
-
 steps:
 # 1) Build image
 steps:
@@ -20,7 +19,6 @@ steps:
   args:
   - push
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/doc-repo/doc-summarizer:$SHORT_SHA'
-
 # deploy lên Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
@@ -32,8 +30,6 @@ steps:
   - --region=us-central1
   - --platform=managed
   - --allow-unauthenticated
-
-
 # Khai báo image để Cloud Build “đánh dấu” thành artifact
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/doc-repo/doc-summarizer'
