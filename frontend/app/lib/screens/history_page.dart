@@ -1,16 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 class HistoryPage extends StatefulWidget {
-  const HistoryPage({super.key});
-
   @override
   State<HistoryPage> createState() => _HistoryPageState();
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  List<Map<String, dynamic>> _history = [];
+  List<Map<String, dynamic>> history = [];
 
   @override
   void initState() {
@@ -20,42 +18,51 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Future<void> _loadHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList('history') ?? [];
-    final result = list.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
+    final items = prefs.getStringList('history') ?? [];
     setState(() {
-      _history = result.reversed.toList();
+      history = items
+          .map((e) => Map<String, dynamic>.from(jsonDecode(e)))
+          .toList()
+          .reversed
+          .toList();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Lịch sử tóm tắt')),
-      body: _history.isEmpty
-          ? const Center(child: Text("Chưa có lịch sử"))
-          : ListView.builder(
-              itemCount: _history.length,
-              itemBuilder: (context, index) {
-                final item = _history[index];
-                return ListTile(
-                  title: Text(item['file'] ?? 'File'),
-                  subtitle: Text(item['summary'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
-                  trailing: Text(item['time']?.substring(0, 19).replaceAll('T', ' ') ?? ''),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: Text(item['file'] ?? 'File'),
-                        content: SingleChildScrollView(child: Text(item['summary'] ?? '')),
+    if (history.isEmpty) {
+      return Center(child: Text("Chưa có lịch sử tóm tắt nào."));
+    }
+    return ListView.builder(
+      padding: EdgeInsets.all(16),
+      itemCount: history.length,
+      itemBuilder: (context, idx) {
+        final item = history[idx];
+        return Card(
+          margin: EdgeInsets.only(bottom: 14),
+          elevation: 6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: ListTile(
+            title: Text(item["datetime"] ?? "",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(item["summary"] ?? "",
+                maxLines: 3, overflow: TextOverflow.ellipsis),
+            onTap: () {
+              showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                        title: Text("Tóm tắt"),
+                        content: Text(item["summary"] ?? ""),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Đóng"))
+                          TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text("Đóng"))
                         ],
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+                      ));
+            },
+          ),
+        );
+      },
     );
   }
 }

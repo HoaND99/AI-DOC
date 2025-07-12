@@ -12,3 +12,5 @@ frontend/app/.dart_tool/
 frontend/app/.idea/
 
 .vs/
+
+.env
